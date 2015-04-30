@@ -1,0 +1,15 @@
+[
+	{
+		"name" : "vertSource",
+		"src"  : "monkey.vert",
+		"type" : "text"
+	}, {
+		"name" : "fragSource",
+		"src"  : "monkey.frag",
+		"type" : "text"
+	}, {
+		"name" : "objMonkey",
+		"src"  : "monkey.json",
+		"type" : "json"
+	}
+]
