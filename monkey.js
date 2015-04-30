@@ -105,6 +105,9 @@ var startWebGL = (function() {
 			gl.uniform.MMatrix = gl.getUniformLocation(shaderProg, 'uMMatrix');
 			gl.uniform.NMatrix = gl.getUniformLocation(shaderProg, 'uNMatrix');
 
+			gl.uniform.lightPos = gl.getUniformLocation(shaderProg, 'uLightPos');
+			gl.uniform.lightColor = gl.getUniformLocation(shaderProg, 'uLightColor');
+
 			var model = mat4.create();
 			var proj = mat4.create();
 			mat4.perspective(proj, 45, gl.viewportWidth/gl.viewportHeight, 0.1, 100);
@@ -116,6 +119,9 @@ var startWebGL = (function() {
 			gl.uniformMatrix4fv(gl.uniform.PVMatrix, false, proj);
 			gl.uniformMatrix4fv(gl.uniform.MMatrix, false, model);
 			gl.uniformMatrix3fv(gl.uniform.NMatrix, false, norm);
+
+			gl.uniform3f(gl.uniform.lightPos, -5, -10, -5);
+			gl.uniform3f(gl.uniform.lightColor, 0.9, 0.9, 0.55);
 		};
 	}());
 
