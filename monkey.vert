@@ -6,8 +6,11 @@ uniform mat4 uMMatrix;
 uniform mat3 uNMatrix;
 
 varying vec3 vNorm;
+varying vec3 vFragPos;
 
 void main(void) {
-	vNorm = normalize(uNMatrix * aNorm);
-	gl_Position = uPVMatrix * uMMatrix * vec4(aVertPos, 1.0);
+	vNorm = uNMatrix * aNorm;
+	vec4 fragpos = uMMatrix * vec4(aVertPos, 1.0);
+	vFragPos = fragpos.xyz;
+	gl_Position = uPVMatrix * fragpos;
 }
