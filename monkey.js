@@ -97,69 +97,60 @@ var startWebGL = (function() {
 			gl.useProgram(shaderProg);
 
 			gl.attrib.vertPos = gl.getAttribLocation(shaderProg, 'aVertPos');
+			gl.attrib.norm = gl.getAttribLocation(shaderProg, 'aNorm');
 			gl.enableVertexAttribArray(gl.attrib.vertPos);
+			gl.enableVertexAttribArray(gl.attrib.norm);
 
 			gl.uniform.PVMatrix = gl.getUniformLocation(shaderProg, 'uPVMatrix');
 			gl.uniform.MMatrix = gl.getUniformLocation(shaderProg, 'uMMatrix');
+			gl.uniform.NMatrix = gl.getUniformLocation(shaderProg, 'uNMatrix');
 
 			var model = mat4.create();
 			var proj = mat4.create();
 			mat4.perspective(proj, 45, gl.viewportWidth/gl.viewportHeight, 0.1, 100);
 			mat4.translate(model, model, [0, 0, -4]);
 
+			var norm = mat3.create();
+			mat3.normalFromMat4(norm, model);
+
 			gl.uniformMatrix4fv(gl.uniform.PVMatrix, false, proj);
 			gl.uniformMatrix4fv(gl.uniform.MMatrix, false, model);
+			gl.uniformMatrix3fv(gl.uniform.NMatrix, false, norm);
 		};
 	}());
 
 	function genNorms(model) {
-		timesProcessed = [];
-		norms = [];
-
-		numFaces = model.faces.length/3;
-		for (var i=0; i<numFaces*3; i += 3) {
-			// An array of vec3's with the corner positions of the i'th tri
-			curVerts = [];
-			curTimesProc = [];
-			for (var j=0; j<3; j++) {
-				// The j'th corner
-				curVerts[j] = [];
-				for (var k=0; k<3; k++) {
-					// The k'th component
-					curVerts[j][k] = model.verticies[3*model.faces[i + 3*j + k] + k];
-				}
-				curTimesProc[j] = timesProcessed[i + 3*j];
-				// If its undefined, make it 0
-				if (!curTimesProc[j]) curTimesProc[j] = 0;
+		var numVerts = model.vertIndex.length;
+		var norms = [];
+		for (var i=0; i<numVerts; i++){
+			for (var j=0; j<3; j++) {;
+				norms[model.vertIndex[i]*3 + j] = model.norms[model.normIndex[i]*3 + j];
 			}
-
-			// Assuming the corners are specified clockwise we calculate the norm as
-			// (v3 - v1)x(v2 - v1). Then you normlaize that
-			s1 = [];
-			s2 = [];
-			facenorm = [];
-			for (var k=0; k<3; k++) {
-				s1[k] = curVerts[2][k] - curVerts[0][k];
-				s2[k] = curVerts[1][k] - curVerts[0][k];
-			}
-			// This is a cross product...
-
-			// Now on each corner do a weighted average and renormalize (for smooth shading)
 		}
+		model.normIndex = null;
+		model.norms = norms;
 	}
 
 	function initBuffers() {
+		genNorms(res.objMonkey);
+
 		gl.vbo.monkeyVerticies = gl.createBuffer();
 		gl.vbo.monkeyVerticies.itemSize = 3;
-		gl.vbo.monkeyVerticies.numItems = res.objMonkey.verticies.length/3;
+		gl.vbo.monkeyVerticies.numItems = res.objMonkey.verts.length/3;
 		gl.bindBuffer(gl.ARRAY_BUFFER, gl.vbo.monkeyVerticies);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(res.objMonkey.verticies), gl.STATIC_DRAW);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(res.objMonkey.verts), gl.STATIC_DRAW);
+
+		gl.vbo.monkeyNorms = gl.createBuffer();
+		gl.vbo.monkeyNorms.itemSize = 3;
+		gl.vbo.monkeyNorms.numItems = gl.vbo.monkeyVerticies.numItems;
+		gl.bindBuffer(gl.ARRAY_BUFFER, gl.vbo.monkeyNorms);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(res.objMonkey.norms), gl.STATIC_DRAW);
 
 		gl.ibo.monkeyTris = gl.createBuffer();
 		gl.ibo.monkeyTris.itemSize = 1;
-		gl.ibo.monkeyTris.numItems = res.objMonkey.faces.length;
+		gl.ibo.monkeyTris.numItems = res.objMonkey.vertIndex.length;
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.ibo.monkeyTris);
-		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(res.objMonkey.faces), gl.STATIC_DRAW);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(res.objMonkey.vertIndex), gl.STATIC_DRAW);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, null);
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
@@ -171,6 +162,9 @@ var startWebGL = (function() {
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, gl.vbo.monkeyVerticies);
 		gl.vertexAttribPointer(gl.attrib.vertPos, gl.vbo.monkeyVerticies.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, gl.vbo.monkeyNorms);
+		gl.vertexAttribPointer(gl.attrib.norm, gl.vbo.monkeyNorms.itemSize, gl.FLOAT, false, 0, 0);
 
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.ibo.monkeyTris);
 		gl.drawElements(gl.TRIANGLES, gl.ibo.monkeyTris.numItems, gl.UNSIGNED_SHORT, 0);
@@ -194,9 +188,12 @@ var startWebGL = (function() {
 			timeThen = timeNow;
 
 			var model = mat4.create();
+			var norm = mat3.create();
 			mat4.translate(model, model, [0, 0, -4]);
 			mat4.rotateY(model, model, angle);
+			mat3.normalFromMat4(norm, model);
 			gl.uniformMatrix4fv(gl.uniform.MMatrix, false, model);
+			gl.uniformMatrix3fv(gl.uniform.NMatrix, false, norm);;
 
 			drawScene();
 		};
@@ -207,7 +204,6 @@ var startWebGL = (function() {
 
 		initGL(canvas);
 		loadResources(res, 'res.json', function() {
-			genNorms(res.objMonkey);
 			initShaders(res.vertSource, res.fragSource);
 			initBuffers();
 
